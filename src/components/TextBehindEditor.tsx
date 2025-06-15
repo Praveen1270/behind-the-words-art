@@ -5,7 +5,6 @@ import { CanvasEditor } from './CanvasEditor';
 import { TextControls } from './TextControls';
 import { ExportControls } from './ExportControls';
 import { Card } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 
 export interface TextStyle {
   content: string;
@@ -33,65 +32,80 @@ export const TextBehindEditor = () => {
   const [textStyle, setTextStyle] = useState<TextStyle>({
     content: 'EDIT',
     fontSize: 120,
-    fontFamily: 'Arial Black',
-    color: '#ffffff',
-    fontWeight: 'bold',
+    fontFamily: 'SF Pro Display',
+    color: '#000000',
+    fontWeight: '600',
     fontStyle: 'normal',
     textAlign: 'center',
     x: 400,
     y: 300,
-    shadow: true,
+    shadow: false,
     shadowColor: '#000000',
     shadowBlur: 10,
     shadowOffset: 5,
   });
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Left Panel - Controls */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card className="p-6 bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-            <h3 className="text-lg font-semibold text-white mb-4">Upload Image</h3>
-            <ImageUpload 
-              onImageUpload={setOriginalImage}
-              onProcessedImage={setProcessedImage}
-              onSubjectMask={setSubjectMask}
-              isProcessing={isProcessing}
-              setIsProcessing={setIsProcessing}
-            />
-          </Card>
-
-          {originalImage && (
-            <>
-              <Card className="p-6 bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-                <h3 className="text-lg font-semibold text-white mb-4">Text Style</h3>
-                <TextControls 
-                  textStyle={textStyle}
-                  onTextStyleChange={setTextStyle}
+    <div className="flex h-screen">
+      {/* Fixed Left Panel - Controls */}
+      <div className="w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-8">
+            {/* Upload Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Upload Image</h3>
+              <Card className="p-6 bg-gray-50/50 border-gray-200">
+                <ImageUpload 
+                  onImageUpload={setOriginalImage}
+                  onProcessedImage={setProcessedImage}
+                  onSubjectMask={setSubjectMask}
+                  isProcessing={isProcessing}
+                  setIsProcessing={setIsProcessing}
                 />
               </Card>
+            </div>
 
-              <Card className="p-6 bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-                <h3 className="text-lg font-semibold text-white mb-4">Export</h3>
-                <ExportControls canvasRef={canvasRef} />
-              </Card>
-            </>
-          )}
+            {originalImage && (
+              <>
+                {/* Text Controls Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Text Style</h3>
+                  <Card className="p-6 bg-gray-50/50 border-gray-200">
+                    <TextControls 
+                      textStyle={textStyle}
+                      onTextStyleChange={setTextStyle}
+                    />
+                  </Card>
+                </div>
+
+                {/* Export Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Export</h3>
+                  <Card className="p-6 bg-gray-50/50 border-gray-200">
+                    <ExportControls canvasRef={canvasRef} />
+                  </Card>
+                </div>
+              </>
+            )}
+          </div>
         </div>
+      </div>
 
-        {/* Right Panel - Canvas */}
-        <div className="lg:col-span-3">
-          <Card className="p-6 bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-            <CanvasEditor
-              ref={canvasRef}
-              originalImage={originalImage}
-              processedImage={processedImage}
-              subjectMask={subjectMask}
-              textStyle={textStyle}
-              onTextStyleChange={setTextStyle}
-              isProcessing={isProcessing}
-            />
+      {/* Right Panel - Canvas (Scrollable) */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-8">
+          <Card className="bg-white border-gray-200 shadow-lg">
+            <div className="p-8">
+              <CanvasEditor
+                ref={canvasRef}
+                originalImage={originalImage}
+                processedImage={processedImage}
+                subjectMask={subjectMask}
+                textStyle={textStyle}
+                onTextStyleChange={setTextStyle}
+                isProcessing={isProcessing}
+              />
+            </div>
           </Card>
         </div>
       </div>
