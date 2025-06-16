@@ -1,6 +1,7 @@
 
-import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle, useState } from 'react';
 import { TextStyle } from './TextBehindEditor';
+import { detectObjectBounds, calculateOptimalTextPosition, ObjectBounds } from '@/utils/objectDetection';
 
 interface CanvasEditorProps {
   originalImage: HTMLImageElement | null;
@@ -22,8 +23,65 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDragging = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
+  const [objectBounds, setObjectBounds] = useState<ObjectBounds | null>(null);
+  const [autoPositioned, setAutoPositioned] = useState(false);
 
   useImperativeHandle(ref, () => canvasRef.current!);
+
+  // Detect object bounds when processed image is available
+  useEffect(() => {
+    if (!subjectMask || !originalImage || isProcessing) return;
+
+    detectObjectBounds(subjectMask, (bounds) => {
+      setObjectBounds(bounds);
+      
+      // Auto-position text only once when object is first detected
+      if (!autoPositioned && canvasRef.current) {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          // Set up canvas font for text measurement
+          const scale = Math.min(800 / originalImage.width, 600 / originalImage.height, 1);
+          ctx.font = `${textStyle.fontStyle} ${textStyle.fontWeight} ${textStyle.fontSize * scale}px ${textStyle.fontFamily}`;
+          
+          const optimalPosition = calculateOptimalTextPosition(
+            {
+              x: bounds.x * scale,
+              y: bounds.y * scale,
+              width: bounds.width * scale,
+              height: bounds.height * scale
+            },
+            canvas.width,
+            canvas.height,
+            textStyle.fontSize * scale,
+            textStyle.content,
+            ctx
+          );
+
+          // Convert back to original image coordinates
+          const newX = optimalPosition.x / scale;
+          const newY = optimalPosition.y / scale;
+
+          onTextStyleChange({
+            ...textStyle,
+            x: newX,
+            y: newY
+          });
+          
+          setAutoPositioned(true);
+          console.log('Auto-positioned text at:', { x: newX, y: newY });
+        }
+      }
+    });
+  }, [subjectMask, originalImage, isProcessing, autoPositioned, textStyle.content, textStyle.fontSize, textStyle.fontFamily, onTextStyleChange]);
+
+  // Reset auto-positioning when new image is uploaded
+  useEffect(() => {
+    if (!originalImage) {
+      setAutoPositioned(false);
+      setObjectBounds(null);
+    }
+  }, [originalImage]);
 
   const drawCanvas = () => {
     const canvas = canvasRef.current;
@@ -43,10 +101,10 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Layer 1: Original background image
+    // Layer 0: Original background image
     ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
 
-    // Layer 2: Text behind subject
+    // Layer 1: Text behind subject
     if (!isProcessing) {
       ctx.save();
       ctx.font = `${textStyle.fontStyle} ${textStyle.fontWeight} ${textStyle.fontSize * scale}px ${textStyle.fontFamily}`;
@@ -68,7 +126,7 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
       ctx.restore();
     }
 
-    // Layer 3: Subject mask (foreground)
+    // Layer 2: Subject mask (foreground)
     if (subjectMask && !isProcessing) {
       ctx.drawImage(subjectMask, 0, 0, canvas.width, canvas.height);
     }
@@ -156,6 +214,12 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
         {!originalImage && !isProcessing && (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-700/50 rounded-lg">
             <p className="text-slate-400 text-lg">Upload an image to get started</p>
+          </div>
+        )}
+
+        {objectBounds && !isProcessing && (
+          <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+            Auto-positioned behind detected object
           </div>
         )}
       </div>
