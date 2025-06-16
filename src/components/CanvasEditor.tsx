@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, forwardRef, useImperativeHandle, useState } from 'react';
 import { TextStyle } from './TextBehindEditor';
 import { detectObjectBounds, calculateOptimalTextPosition, ObjectBounds } from '@/utils/objectDetection';
@@ -197,8 +196,7 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           style={{ 
-            maxHeight: '80vh',
-            imageRendering: 'high-quality'
+            maxHeight: '80vh'
           }}
         />
         
