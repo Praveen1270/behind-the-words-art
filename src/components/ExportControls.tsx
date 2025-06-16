@@ -26,6 +26,10 @@ export const ExportControls: React.FC<ExportControlsProps> = ({ canvasRef }) => 
         tempCanvas.width = canvas.width;
         tempCanvas.height = canvas.height;
         
+        // Enable high-quality rendering
+        tempCtx.imageSmoothingEnabled = true;
+        tempCtx.imageSmoothingQuality = 'high';
+        
         // Fill with white background
         tempCtx.fillStyle = '#ffffff';
         tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
@@ -34,17 +38,17 @@ export const ExportControls: React.FC<ExportControlsProps> = ({ canvasRef }) => 
         tempCtx.drawImage(canvas, 0, 0);
         
         link.download = `textbehind-${Date.now()}.jpg`;
-        link.href = tempCanvas.toDataURL('image/jpeg', 0.9);
+        link.href = tempCanvas.toDataURL('image/jpeg', 1.0); // Maximum quality
       } else {
         link.download = `textbehind-${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png');
+        link.href = canvas.toDataURL('image/png', 1.0); // Maximum quality
       }
       
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
-      toast.success(`Image downloaded as ${format.toUpperCase()}!`);
+      toast.success(`High-quality image downloaded as ${format.toUpperCase()}!`);
     } catch (error) {
       console.error('Download error:', error);
       toast.error('Failed to download image');
@@ -76,15 +80,15 @@ export const ExportControls: React.FC<ExportControlsProps> = ({ canvasRef }) => 
             // Fallback to copying to clipboard
             const item = new ClipboardItem({ 'image/png': blob });
             await navigator.clipboard.write([item]);
-            toast.success('Image copied to clipboard!');
+            toast.success('High-quality image copied to clipboard!');
           }
         } else {
           // Fallback to copying to clipboard
           const item = new ClipboardItem({ 'image/png': blob });
           await navigator.clipboard.write([item]);
-          toast.success('Image copied to clipboard!');
+          toast.success('High-quality image copied to clipboard!');
         }
-      }, 'image/png');
+      }, 'image/png', 1.0); // Maximum quality
     } catch (error) {
       console.error('Share error:', error);
       toast.error('Failed to share image');
@@ -99,7 +103,7 @@ export const ExportControls: React.FC<ExportControlsProps> = ({ canvasRef }) => 
           className="w-full bg-purple-600 hover:bg-purple-700 text-white"
         >
           <Download className="h-4 w-4 mr-2" />
-          Download PNG
+          Download High-Quality PNG
         </Button>
         
         <Button
@@ -108,7 +112,7 @@ export const ExportControls: React.FC<ExportControlsProps> = ({ canvasRef }) => 
           className="w-full border-slate-600 hover:border-purple-400 text-slate-300"
         >
           <Download className="h-4 w-4 mr-2" />
-          Download JPG
+          Download High-Quality JPG
         </Button>
       </div>
 
@@ -118,11 +122,12 @@ export const ExportControls: React.FC<ExportControlsProps> = ({ canvasRef }) => 
         className="w-full border-slate-600 hover:border-purple-400 text-slate-300"
       >
         <Share className="h-4 w-4 mr-2" />
-        Share
+        Share High-Quality
       </Button>
 
       <div className="text-xs text-slate-500 text-center">
         <p>Pro tip: Drag the text on the canvas to reposition it!</p>
+        <p className="mt-1">All exports maintain original image quality</p>
       </div>
     </div>
   );

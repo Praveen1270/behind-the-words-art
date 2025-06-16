@@ -40,36 +40,26 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          // Set up canvas font for text measurement
-          const scale = Math.min(800 / originalImage.width, 600 / originalImage.height, 1);
-          ctx.font = `${textStyle.fontStyle} ${textStyle.fontWeight} ${textStyle.fontSize * scale}px ${textStyle.fontFamily}`;
+          // Use original image dimensions for accurate positioning
+          ctx.font = `${textStyle.fontStyle} ${textStyle.fontWeight} ${textStyle.fontSize}px ${textStyle.fontFamily}`;
           
           const optimalPosition = calculateOptimalTextPosition(
-            {
-              x: bounds.x * scale,
-              y: bounds.y * scale,
-              width: bounds.width * scale,
-              height: bounds.height * scale
-            },
-            canvas.width,
-            canvas.height,
-            textStyle.fontSize * scale,
+            bounds,
+            originalImage.naturalWidth,
+            originalImage.naturalHeight,
+            textStyle.fontSize,
             textStyle.content,
             ctx
           );
 
-          // Convert back to original image coordinates
-          const newX = optimalPosition.x / scale;
-          const newY = optimalPosition.y / scale;
-
           onTextStyleChange({
             ...textStyle,
-            x: newX,
-            y: newY
+            x: optimalPosition.x,
+            y: optimalPosition.y
           });
           
           setAutoPositioned(true);
-          console.log('Auto-positioned text at:', { x: newX, y: newY });
+          console.log('Auto-positioned text at:', optimalPosition);
         }
       }
     });
@@ -90,45 +80,46 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size to match image
-    const maxWidth = 800;
-    const maxHeight = 600;
-    const scale = Math.min(maxWidth / originalImage.width, maxHeight / originalImage.height, 1);
+    // Use original image dimensions for high quality
+    const originalWidth = originalImage.naturalWidth;
+    const originalHeight = originalImage.naturalHeight;
     
-    canvas.width = originalImage.width * scale;
-    canvas.height = originalImage.height * scale;
+    // Set canvas to original dimensions
+    canvas.width = originalWidth;
+    canvas.height = originalHeight;
+    
+    // Enable high-quality rendering
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Layer 0: Original background image
-    ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
+    // Layer 0: Original background image at full resolution
+    ctx.drawImage(originalImage, 0, 0, originalWidth, originalHeight);
 
     // Layer 1: Text behind subject
     if (!isProcessing) {
       ctx.save();
-      ctx.font = `${textStyle.fontStyle} ${textStyle.fontWeight} ${textStyle.fontSize * scale}px ${textStyle.fontFamily}`;
+      ctx.font = `${textStyle.fontStyle} ${textStyle.fontWeight} ${textStyle.fontSize}px ${textStyle.fontFamily}`;
       ctx.fillStyle = textStyle.color;
       ctx.textAlign = textStyle.textAlign as CanvasTextAlign;
       
       // Apply shadow if enabled
       if (textStyle.shadow) {
         ctx.shadowColor = textStyle.shadowColor;
-        ctx.shadowBlur = textStyle.shadowBlur * scale;
-        ctx.shadowOffsetX = textStyle.shadowOffset * scale;
-        ctx.shadowOffsetY = textStyle.shadowOffset * scale;
+        ctx.shadowBlur = textStyle.shadowBlur;
+        ctx.shadowOffsetX = textStyle.shadowOffset;
+        ctx.shadowOffsetY = textStyle.shadowOffset;
       }
 
-      const x = textStyle.x * scale;
-      const y = textStyle.y * scale;
-      
-      ctx.fillText(textStyle.content, x, y);
+      ctx.fillText(textStyle.content, textStyle.x, textStyle.y);
       ctx.restore();
     }
 
-    // Layer 2: Subject mask (foreground)
+    // Layer 2: Subject mask (foreground) at full resolution
     if (subjectMask && !isProcessing) {
-      ctx.drawImage(subjectMask, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(subjectMask, 0, 0, originalWidth, originalHeight);
     }
 
     // Processing overlay
@@ -138,7 +129,7 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
       ctx.fillStyle = '#ffffff';
-      ctx.font = '24px Arial';
+      ctx.font = '48px Arial'; // Larger font for high-res
       ctx.textAlign = 'center';
       ctx.fillText('Processing with AI...', canvas.width / 2, canvas.height / 2);
       ctx.restore();
@@ -146,7 +137,7 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
   };
 
   const handleMouseDown = (event: React.MouseEvent) => {
-    if (!canvasRef.current || isProcessing) return;
+    if (!canvasRef.current || isProcessing || !originalImage) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
     const scaleX = canvasRef.current.width / rect.width;
@@ -155,15 +146,12 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
     const x = (event.clientX - rect.left) * scaleX;
     const y = (event.clientY - rect.top) * scaleY;
 
-    // Check if click is near text position (rough approximation)
-    const textX = textStyle.x * (canvasRef.current.width / (originalImage?.width || 1));
-    const textY = textStyle.y * (canvasRef.current.height / (originalImage?.height || 1));
+    // Check if click is near text position
+    const distance = Math.sqrt((x - textStyle.x) ** 2 + (y - textStyle.y) ** 2);
     
-    const distance = Math.sqrt((x - textX) ** 2 + (y - textY) ** 2);
-    
-    if (distance < 100) { // 100px tolerance
+    if (distance < 150) { // Increased tolerance for high-res
       isDragging.current = true;
-      dragOffset.current = { x: x - textX, y: y - textY };
+      dragOffset.current = { x: x - textStyle.x, y: y - textStyle.y };
       canvasRef.current.style.cursor = 'grabbing';
     }
   };
@@ -178,13 +166,13 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
     const x = (event.clientX - rect.left) * scaleX;
     const y = (event.clientY - rect.top) * scaleY;
 
-    const newX = (x - dragOffset.current.x) * (originalImage.width / canvasRef.current.width);
-    const newY = (y - dragOffset.current.y) * (originalImage.height / canvasRef.current.height);
+    const newX = x - dragOffset.current.x;
+    const newY = y - dragOffset.current.y;
 
     onTextStyleChange({
       ...textStyle,
-      x: Math.max(0, Math.min(originalImage.width, newX)),
-      y: Math.max(textStyle.fontSize, Math.min(originalImage.height, newY))
+      x: Math.max(0, Math.min(originalImage.naturalWidth, newX)),
+      y: Math.max(textStyle.fontSize, Math.min(originalImage.naturalHeight, newY))
     });
   };
 
@@ -208,7 +196,10 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          style={{ maxHeight: '600px' }}
+          style={{ 
+            maxHeight: '80vh',
+            imageRendering: 'high-quality'
+          }}
         />
         
         {!originalImage && !isProcessing && (

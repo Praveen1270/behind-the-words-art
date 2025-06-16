@@ -6,17 +6,22 @@ export const removeBackground = async (imageElement: HTMLImageElement): Promise<
   try {
     console.log('Starting background removal with remove.bg API...');
     
-    // Convert image to blob first
+    // Convert image to blob with high quality
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
     if (!ctx) throw new Error('Could not get canvas context');
     
+    // Use original dimensions to maintain quality
     canvas.width = imageElement.naturalWidth;
     canvas.height = imageElement.naturalHeight;
+    
+    // Use high-quality image rendering
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(imageElement, 0, 0);
     
-    // Convert canvas to blob
+    // Convert canvas to blob with maximum quality
     const imageBlob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((blob) => {
         if (blob) {
@@ -24,13 +29,14 @@ export const removeBackground = async (imageElement: HTMLImageElement): Promise<
         } else {
           reject(new Error('Failed to convert image to blob'));
         }
-      }, 'image/jpeg', 0.9);
+      }, 'image/png', 1.0); // Use PNG with max quality
     });
     
     // Create form data for the API request
     const formData = new FormData();
     formData.append('image_file', imageBlob);
-    formData.append('size', 'auto');
+    formData.append('size', 'regular'); // Use regular size instead of auto for better quality
+    formData.append('format', 'png'); // Request PNG format for better quality
     
     console.log('Sending request to remove.bg API...');
     
