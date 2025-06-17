@@ -55,7 +55,7 @@ export const removeBackground = async (imageElement: HTMLImageElement): Promise<
     // Configure the background removal
     const config: Config = {
       debug: false,
-      model: 'medium', // Options: 'small', 'medium', 'large'
+      model: 'isnet', // Using valid model option
       output: {
         format: 'image/png',
         quality: 1.0
