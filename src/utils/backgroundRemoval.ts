@@ -1,12 +1,30 @@
 
-const API_KEY = 'ZRvPCaUGRvDpLniCq5MuESUs';
-const API_URL = 'https://api.remove.bg/v1.0/removebg';
+import { removeBackground as imglyRemoveBackground, Config, preload } from '@imgly/background-removal';
+
+let isModelLoaded = false;
+
+const loadModel = async () => {
+  if (isModelLoaded) return;
+  
+  try {
+    console.log('Loading background removal model...');
+    await preload();
+    isModelLoaded = true;
+    console.log('Background removal model loaded successfully');
+  } catch (error) {
+    console.error('Failed to load background removal model:', error);
+    throw error;
+  }
+};
 
 export const removeBackground = async (imageElement: HTMLImageElement): Promise<Blob> => {
   try {
-    console.log('Starting background removal with remove.bg API...');
+    console.log('Starting local background removal...');
     
-    // Convert image to blob with high quality
+    // Load model if not already loaded
+    await loadModel();
+    
+    // Convert image to canvas for processing
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
@@ -21,46 +39,37 @@ export const removeBackground = async (imageElement: HTMLImageElement): Promise<
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(imageElement, 0, 0);
     
-    // Convert canvas to blob with maximum quality
-    const imageBlob = await new Promise<Blob>((resolve, reject) => {
+    // Convert canvas to blob for processing
+    const inputBlob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((blob) => {
         if (blob) {
           resolve(blob);
         } else {
           reject(new Error('Failed to convert image to blob'));
         }
-      }, 'image/png', 1.0); // Use PNG with max quality
+      }, 'image/png', 1.0);
     });
     
-    // Create form data for the API request
-    const formData = new FormData();
-    formData.append('image_file', imageBlob);
-    formData.append('size', 'regular'); // Use regular size instead of auto for better quality
-    formData.append('format', 'png'); // Request PNG format for better quality
+    console.log('Processing image with local AI model...');
     
-    console.log('Sending request to remove.bg API...');
+    // Configure the background removal
+    const config: Config = {
+      debug: false,
+      model: 'medium', // Options: 'small', 'medium', 'large'
+      output: {
+        format: 'image/png',
+        quality: 1.0
+      }
+    };
     
-    // Make API request
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'X-Api-Key': API_KEY,
-      },
-      body: formData,
-    });
+    // Process the image
+    const resultBlob = await imglyRemoveBackground(inputBlob, config);
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Error:', errorText);
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-    }
-    
-    const resultBlob = await response.blob();
-    console.log('Background removed successfully');
+    console.log('Background removed successfully using local processing');
     
     return resultBlob;
   } catch (error) {
-    console.error('Error removing background:', error);
+    console.error('Error removing background locally:', error);
     throw error;
   }
 };

@@ -1,4 +1,3 @@
-
 import React, { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,8 +43,8 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       const originalImage = await loadImage(file);
       onImageUpload(originalImage);
 
-      // Remove background
-      toast.info('Removing background with AI...');
+      // Remove background using local AI model
+      toast.info('Loading AI model and removing background...');
       const processedBlob = await removeBackground(originalImage);
       
       // Create processed image (background removed version)
@@ -66,7 +65,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       const maskImage = await loadImage(maskBlob);
       onSubjectMask(maskImage);
 
-      toast.success('Image processed successfully!');
+      toast.success('Image processed successfully with local AI!');
     } catch (error) {
       console.error('Error processing image:', error);
       toast.error('Failed to process image. Please try again.');
@@ -110,7 +109,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
           
           <div>
             <p className="text-slate-300 font-medium mb-2">
-              {isProcessing ? 'Processing...' : 'Drop your image here'}
+              {isProcessing ? 'Processing with local AI...' : 'Drop your image here'}
             </p>
             <p className="text-slate-500 text-sm">
               JPG, PNG up to 10MB
@@ -141,7 +140,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       {isProcessing && (
         <div className="text-center">
           <p className="text-slate-400 text-sm">
-            Using AI to separate subject from background...
+            Using local AI model to separate subject from background...
           </p>
         </div>
       )}
