@@ -1,5 +1,5 @@
 
-import { removeBackground as imglyRemoveBackground, Config, preload } from '@imgly/background-removal';
+import { removeBackground as removeBackgroundAPI } from 'not-lain/background-removal';
 
 let isModelLoaded = false;
 
@@ -7,8 +7,7 @@ const loadModel = async () => {
   if (isModelLoaded) return;
   
   try {
-    console.log('Loading background removal model...');
-    await preload();
+    console.log('Background removal model ready...');
     isModelLoaded = true;
     console.log('Background removal model loaded successfully');
   } catch (error) {
@@ -52,18 +51,8 @@ export const removeBackground = async (imageElement: HTMLImageElement): Promise<
     
     console.log('Processing image with local AI model...');
     
-    // Configure the background removal
-    const config: Config = {
-      debug: false,
-      model: 'isnet', // Using valid model option
-      output: {
-        format: 'image/png',
-        quality: 1.0
-      }
-    };
-    
-    // Process the image
-    const resultBlob = await imglyRemoveBackground(inputBlob, config);
+    // Process the image using the not-lain/background-removal package
+    const resultBlob = await removeBackgroundAPI(inputBlob);
     
     console.log('Background removed successfully using local processing');
     
