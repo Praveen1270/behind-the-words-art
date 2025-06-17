@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, forwardRef, useImperativeHandle, useState } from 'react';
 import { TextStyle } from './TextBehindEditor';
 import { detectObjectBounds, calculateOptimalTextPosition, ObjectBounds } from '@/utils/objectDetection';
@@ -97,27 +98,46 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
     // Layer 0: Original background image at full resolution
     ctx.drawImage(originalImage, 0, 0, originalWidth, originalHeight);
 
-    // Layer 1: Text behind subject
-    if (!isProcessing) {
+    // Layer 1: Text behind subject (only if not processing and text content exists)
+    if (!isProcessing && textStyle.content.trim()) {
       ctx.save();
-      ctx.font = `${textStyle.fontStyle} ${textStyle.fontWeight} ${textStyle.fontSize}px ${textStyle.fontFamily}`;
+      
+      // Set font with proper fallbacks
+      const fontFamily = textStyle.fontFamily || 'Arial';
+      const fontSize = Math.max(textStyle.fontSize, 12); // Ensure minimum font size
+      const fontWeight = textStyle.fontWeight || '400';
+      const fontStyle = textStyle.fontStyle || 'normal';
+      
+      ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}, Arial, sans-serif`;
       ctx.fillStyle = textStyle.color;
-      ctx.textAlign = textStyle.textAlign as CanvasTextAlign;
+      ctx.textAlign = (textStyle.textAlign as CanvasTextAlign) || 'center';
+      ctx.textBaseline = 'middle';
       
       // Apply shadow if enabled
       if (textStyle.shadow) {
-        ctx.shadowColor = textStyle.shadowColor;
-        ctx.shadowBlur = textStyle.shadowBlur;
-        ctx.shadowOffsetX = textStyle.shadowOffset;
-        ctx.shadowOffsetY = textStyle.shadowOffset;
+        ctx.shadowColor = textStyle.shadowColor || '#000000';
+        ctx.shadowBlur = textStyle.shadowBlur || 0;
+        ctx.shadowOffsetX = textStyle.shadowOffset || 0;
+        ctx.shadowOffsetY = textStyle.shadowOffset || 0;
       }
 
-      ctx.fillText(textStyle.content, textStyle.x, textStyle.y);
+      // Ensure text position is within canvas bounds
+      const x = Math.max(0, Math.min(canvas.width, textStyle.x));
+      const y = Math.max(fontSize, Math.min(canvas.height, textStyle.y));
+
+      console.log('Drawing text:', {
+        content: textStyle.content,
+        x, y, fontSize, color: textStyle.color,
+        canvasSize: { width: canvas.width, height: canvas.height }
+      });
+
+      ctx.fillText(textStyle.content, x, y);
       ctx.restore();
     }
 
     // Layer 2: Subject mask (foreground) at full resolution
     if (subjectMask && !isProcessing) {
+      ctx.globalCompositeOperation = 'source-over';
       ctx.drawImage(subjectMask, 0, 0, originalWidth, originalHeight);
     }
 
@@ -128,8 +148,9 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
       ctx.fillStyle = '#ffffff';
-      ctx.font = '48px Arial'; // Larger font for high-res
+      ctx.font = '48px Arial';
       ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.fillText('Processing with AI...', canvas.width / 2, canvas.height / 2);
       ctx.restore();
     }
@@ -209,6 +230,13 @@ export const CanvasEditor = forwardRef<HTMLCanvasElement, CanvasEditorProps>(({
         {objectBounds && !isProcessing && (
           <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
             Auto-positioned behind detected object
+          </div>
+        )}
+
+        {/* Debug info for text positioning */}
+        {originalImage && !isProcessing && (
+          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+            Text: "{textStyle.content}" at ({Math.round(textStyle.x)}, {Math.round(textStyle.y)})
           </div>
         )}
       </div>
